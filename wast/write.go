@@ -15,9 +15,9 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/go-interpreter/wagon/disasm"
-	"github.com/go-interpreter/wagon/wasm"
-	"github.com/go-interpreter/wagon/wasm/operators"
+	"github.com/damoclis/wagon/disasm"
+	"github.com/damoclis/wagon/wasm"
+	"github.com/damoclis/wagon/wasm/operators"
 )
 
 const tab = `  `

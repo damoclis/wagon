@@ -1,4 +1,4 @@
-module github.com/go-interpreter/wagon
+module github.com/damoclis/wagon
 
 require (
 	github.com/edsrzf/mmap-go v1.0.0
