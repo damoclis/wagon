@@ -473,7 +473,7 @@ func (s *SectionTables) WritePayload(w io.Writer) error {
 	return nil
 }
 
-// SectionMemories describes all linaer memories used by a module.
+// SectionMemories describes all linear memories used by a module.
 type SectionMemories struct {
 	RawSection
 	Entries []Memory
@@ -615,6 +615,11 @@ func (s *SectionExports) WritePayload(w io.Writer) error {
 		entries = append(entries, e)
 	}
 	sort.Slice(entries, func(i, j int) bool {
+		// If the Index # is the same, fall back to string comparing the field name.  This should ensure a
+		// deterministic sort order for the exports occurs, when run on the same .wasm file multiple times
+		if entries[i].Index == entries[j].Index {
+			return entries[i].FieldStr < entries[j].FieldStr
+		}
 		return entries[i].Index < entries[j].Index
 	})
 	for _, e := range entries {
@@ -914,7 +919,7 @@ func (l *LocalEntry) MarshalWASM(w io.Writer) error {
 	return nil
 }
 
-// SectionData describes the intial values of a module's linear memory
+// SectionData describes the initial values of a module's linear memory
 type SectionData struct {
 	RawSection
 	Entries []DataSegment

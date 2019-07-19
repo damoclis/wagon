@@ -5,6 +5,7 @@
 package wasm
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 )
@@ -38,14 +39,43 @@ func (m *Module) populateFunctions() error {
 		return nil
 	}
 
+	// If present, extract the function names from the custom 'name' section
+	var names NameMap
+	if s := m.Custom(CustomSectionName); s != nil {
+		var nSec NameSection
+		err := nSec.UnmarshalWASM(bytes.NewReader(s.Data))
+		if err != nil {
+			return err
+		}
+		if len(nSec.Types[NameFunction]) > 0 {
+			sub, err := nSec.Decode(NameFunction)
+			if err != nil {
+				return err
+			}
+			funcs, ok := sub.(*FunctionNames)
+			if ok {
+				names = funcs.Names
+			}
+		}
+	}
+
+	// If available, fill in the name field for the imported functions
+	for i := range m.FunctionIndexSpace {
+		m.FunctionIndexSpace[i].Name = names[uint32(i)]
+	}
+
+	// Add the functions from the wasm itself to the function list
+	numImports := len(m.FunctionIndexSpace)
 	for codeIndex, typeIndex := range m.Function.Types {
 		if int(typeIndex) >= len(m.Types.Entries) {
 			return InvalidFunctionIndexError(typeIndex)
 		}
 
+		// Create the main function structure
 		fn := Function{
 			Sig:  &m.Types.Entries[typeIndex],
 			Body: &m.Code.Bodies[codeIndex],
+			Name: names[uint32(codeIndex+numImports)], // Add the name string if we have it
 		}
 
 		m.FunctionIndexSpace = append(m.FunctionIndexSpace, fn)
@@ -94,7 +124,7 @@ func (m *Module) populateTables() error {
 	}
 
 	for _, elem := range m.Elements.Entries {
-		// the MVP dictates that index should always be zero, we shuold
+		// the MVP dictates that index should always be zero, we should
 		// probably check this
 		if int(elem.Index) >= len(m.TableIndexSpace) {
 			return InvalidTableIndexError(elem.Index)
@@ -125,7 +155,7 @@ func (m *Module) populateTables() error {
 	return nil
 }
 
-// GetTableElement returns an element from the tableindex  space indexed
+// GetTableElement returns an element from the tableindex space indexed
 // by the integer index. It returns an error if index is invalid.
 func (m *Module) GetTableElement(index int) (uint32, error) {
 	if index >= len(m.TableIndexSpace[0]) {

@@ -91,10 +91,23 @@ func (s *scanner) ScanFunc(bytecode []byte, meta *BytecodeMetadata) ([]Compilati
 
 		// TODO: Add to this table as backends support more opcodes.
 		switch inst.Op {
-		case ops.I64Const, ops.I32Const, ops.GetLocal:
+		case ops.I64Load, ops.I32Load, ops.F64Load, ops.F32Load:
+			fakeBE := &AMD64Backend{}
+			memSize, _ := fakeBE.paramsForMemoryOp(inst.Op)
+			inProgress.Metrics.MemoryReads += memSize
+			inProgress.Metrics.StackWrites++
+		case ops.I64Store, ops.I32Store, ops.F64Store, ops.F32Store:
+			fakeBE := &AMD64Backend{}
+			memSize, _ := fakeBE.paramsForMemoryOp(inst.Op)
+			inProgress.Metrics.MemoryWrites += memSize
+			inProgress.Metrics.StackReads += 2
+		case ops.I64Const, ops.I32Const, ops.GetLocal, ops.GetGlobal:
 			inProgress.Metrics.IntegerOps++
 			inProgress.Metrics.StackWrites++
-		case ops.SetLocal:
+		case ops.F64Const, ops.F32Const:
+			inProgress.Metrics.FloatOps++
+			inProgress.Metrics.StackWrites++
+		case ops.SetLocal, ops.SetGlobal:
 			inProgress.Metrics.IntegerOps++
 			inProgress.Metrics.StackReads++
 		case ops.I64Eqz:
@@ -110,6 +123,30 @@ func (s *scanner) ScanFunc(bytecode []byte, meta *BytecodeMetadata) ([]Compilati
 			inProgress.Metrics.IntegerOps++
 			inProgress.Metrics.StackReads += 2
 			inProgress.Metrics.StackWrites++
+
+		case ops.F64Add, ops.F32Add, ops.F64Sub, ops.F32Sub, ops.F64Div, ops.F32Div, ops.F64Mul, ops.F32Mul,
+			ops.F64Min, ops.F32Min, ops.F64Max, ops.F32Max,
+			ops.F64Eq, ops.F64Ne, ops.F64Lt, ops.F64Gt, ops.F64Le, ops.F64Ge,
+			ops.F32Eq, ops.F32Ne, ops.F32Lt, ops.F32Gt, ops.F32Le, ops.F32Ge:
+			inProgress.Metrics.FloatOps++
+			inProgress.Metrics.StackReads += 2
+			inProgress.Metrics.StackWrites++
+
+		case ops.F64ConvertUI64, ops.F64ConvertSI64, ops.F32ConvertUI64, ops.F32ConvertSI64,
+			ops.F64ConvertUI32, ops.F64ConvertSI32, ops.F32ConvertUI32, ops.F32ConvertSI32:
+			inProgress.Metrics.FloatOps++
+			inProgress.Metrics.StackReads++
+			inProgress.Metrics.StackWrites++
+
+		case ops.Drop:
+			inProgress.Metrics.StackReads++
+		case ops.Select:
+			inProgress.Metrics.StackReads += 3
+			inProgress.Metrics.StackWrites++
+
+		case ops.F64ReinterpretI64, ops.F32ReinterpretI32, ops.I64ReinterpretF64, ops.I32ReinterpretF32:
+			inProgress.Metrics.FloatOps++
+			inProgress.Metrics.IntegerOps++
 		}
 		inProgress.Metrics.AllOps++
 	}
