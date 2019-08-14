@@ -162,6 +162,7 @@ func NewVM(module *wasm.Module, opts ...VMOption) (*VM, error) {
 	}
 
 	if module.Start != nil {
+		vm.RecoverPanic = true
 		_, err := vm.ExecCode(int64(module.Start.Index))
 		if err != nil {
 			return nil, err
